@@ -105,21 +105,6 @@ async def serve_client(reader, writer):
     
     request = str(request_line)
     
-    led_on = request.find('/light/on')
-    led_off = request.find('/light/off')
-    print( 'led on = ' + str(led_on))
-    print( 'led off = ' + str(led_off))
-
-    stateis = ""
-    if led_on == 6:
-        print("led on")
-        led.value(1)
-        stateis = "LED is ON"
-
-    if led_off == 6:
-        rint("led off")
-        led.value(0)
-        stateis = "LED is OFF"
     
     stateis = htmlifyLstStr(lstStrSensors(atmo,lght))
     
@@ -184,3 +169,4 @@ try:
     asyncio.run(main())
 finally:
     asyncio.new_event_loop()
+
