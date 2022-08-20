@@ -52,14 +52,34 @@ wlan = network.WLAN(network.STA_IF)
 
 html = """<!DOCTYPE html>
 <html>
-<head> <title>PicoW | HomeStation</title> </head>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PicoW | HomeStation</title></head>
 <body> <h2>HomeStation</h2>
-<p>%s</p>
+<p>{sensorDat}</p>
+{script}
 </body>
 </html>
 """
 
+script = '''<script>
 
+setInterval(function() {
+  getData(); <!-- call a function with set ms updates -->
+}, 2000);
+
+function getData() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("ADCValue").innerHTML =
+      this.responseText;
+    }
+  };
+  xhttp.open("GET", "readADC", true);
+  xhttp.send();
+}
+'''
 
 
 def blink_led(frequency = 0.5, num_blinks = 3):
@@ -108,7 +128,7 @@ async def serve_client(reader, writer):
     
     stateis = htmlifyLstStr(lstStrSensors(atmo,lght))
     
-    response = html % stateis
+    response = html.format(SensorDat=stateis)
     writer.write('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
     writer.write(response)
 
