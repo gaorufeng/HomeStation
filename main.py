@@ -20,6 +20,7 @@ import time
 
 from PiicoDev_Unified import sleep_ms
 
+from PiicoDev_SSD1306 import * 
 from PiicoDev_BME280 import PiicoDev_BME280
 from PiicoDev_VEML6030 import PiicoDev_VEML6030
 from PiicoDev_RGB import PiicoDev_RGB, wheel
@@ -29,8 +30,21 @@ atmo = PiicoDev_BME280()
 lght = PiicoDev_VEML6030()
 leds = PiicoDev_RGB()
 
+try:
+    display = create_PiicoDev_SSD1306()
+except:
+    print('OLED not plugged in')
+
 led = Pin("LED", Pin.OUT, value=1)
 
+
+
+def showIP(ipStr):
+    try:
+        display.text(ipStr, 0,0, 1)
+        display.show()
+    except:
+        print('OLED not plugged in')
 
 
 # Configure your WiFi SSID and password
@@ -136,6 +150,7 @@ async def connect_to_wifi():
         print('connected')
         status = wlan.ifconfig()
         print('ip = ' + status[0])
+        showIP(status[0])
 
 
 async def serve_client(reader, writer):
