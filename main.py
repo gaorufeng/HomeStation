@@ -87,7 +87,7 @@ function updateFirst(event) {
 
 setInterval(function() {
   getSensors();
-}, 5000);
+}, 500);
 
 function getSensors() {
   var xhttp = new XMLHttpRequest();
