@@ -41,15 +41,6 @@ check_interval_sec = 0.25
 
 wlan = network.WLAN(network.STA_IF)
 
-# html = """<!DOCTYPE html>
-# <html>
-# <head> <title>Pico W</title> </head>
-# <body> <h1>Pico W</h1>
-# <p>Hello World</p>
-# </body>
-# </html>
-# """
-
 html = """<!DOCTYPE html>
 <html>
 <head>
@@ -57,17 +48,46 @@ html = """<!DOCTYPE html>
 <link rel="icon" href="data:,">
 <title>PicoW | HomeStation</title></head>
 <body> <h2>HomeStation</h2>
-<p id="sensors">NA</p>
+<p id="sensors">Getting sensor state...</p>
+<p id="colour">{colour}</p>
 {script}
 </body>
 </html>
 """
 
+colour = '''
+<label for="colorWell">LED Colour:</label>
+<input type="color" value="#ff0000" id="colorWell">
+'''
+
+
 script = '''<script>
-    
+
+let colorWell;
+const defaultColor = "#000000";
+window.addEventListener("load", startup, false);
+
+function startup() {
+    colorWell = document.querySelector("#colorWell");
+    colorWell.value = defaultColor;
+    colorWell.addEventListener("input", updateFirst, false);
+    colorWell.select();
+}
+
+function updateFirst(event) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+        document.getElementById("state").innerHTML = this.responseText;
+        }
+    };
+    xhttp.open("GET", "led_set?state=" + String(event.target.value).substr(1), true);
+    xhttp.send();
+}
+
 setInterval(function() {
-  getSensors(); <!-- call a function with set ms updates -->
-}, 2000);
+  getSensors();
+}, 5000);
 
 function getSensors() {
   var xhttp = new XMLHttpRequest();
@@ -82,9 +102,9 @@ function getSensors() {
 </script>
 '''
 
+
 def requestBreakdown(request):
     return request.split()
-
 
 def blink_led(frequency = 0.5, num_blinks = 3):
     for _ in range(num_blinks):
@@ -92,7 +112,6 @@ def blink_led(frequency = 0.5, num_blinks = 3):
         time.sleep(frequency)
         led.off()
         time.sleep(frequency)
-
 
 async def connect_to_wifi():
     wlan.active(True)
@@ -128,50 +147,26 @@ async def serve_client(reader, writer):
         pass
     request = str(request_line)
     
-    
     cmd_rq = requestBreakdown(request)
-    
-    print(cmd_rq[1])
-    stateis = htmlifyLstStr(lstStrSensors(atmo,lght))
-    
-    
-    
     
     if cmd_rq[1] == '/':
         writer.write('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
-        response = html.format(script=script)
+        response = html.format(sensors=htmlifyLstStr(lstStrSensors(atmo,lght)),script=script,colour=colour)
+        pushLight(leds,[[0,0,0]]*3)
         writer.write(response)
         
     elif cmd_rq[1] == '/sensors':
         sensorUpdateStr = htmlifyLstStr(lstStrSensors(atmo,lght))
         writer.write(sensorUpdateStr)
-    
-    
-    
-    
-#     stateis = htmlifyLstStr(lstStrSensors(atmo,lght))
-#     response = html.format(script=script)
-#     
-#     #print(response)
-#     cmd_sensorUpdate = request.find('/sensor')
-#     
-#     if cmd_sensorUpdate ==8:
-#         print('rquest up')
-#         writer.write(response)
-#     
-#     #sensorUpdateStr = htmlifyLstStr(lstStrSensors(atmo,lght))
-#     
-#     
-#     writer.write('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
-#     writer.write(response)
+
+    elif cmd_rq[1][:15] == '/led_set?state=':
+        lightOut = strToLight(cmd_rq[1][15:])
+        pushLight(leds,[lightOut]*3)
 
     await writer.drain()
     await writer.wait_closed()
     print("Client disconnected")
 
-
-
-# TODO Wrap into custom function
 
 # Get converted Atmo Data
 def getAtmo(atmo):
@@ -189,6 +184,10 @@ def pushLight(leds,colLst):
     leds.setPixel(2, colLst[2])
     leds.show()
 
+def strToLight(a):
+    hex_pref = '0x'
+    return [int(hex_pref+a[0:2]),int(hex_pref+a[2:4]),int(hex_pref+a[4:6])]
+
 def getSensors(atmo,lght):
     tempC, preshPa, humRH = getAtmo(atmo)
     return [tempC, preshPa, humRH, getLight(lght)]
@@ -204,8 +203,6 @@ def htmlifyLstStr(lst):
         sensStr += x
         sensStr += '</p>'
     return sensStr
-
-# aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaah
 
 async def main():
     print('Connecting to WiFi...')
