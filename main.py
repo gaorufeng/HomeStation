@@ -54,32 +54,36 @@ html = """<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>PicoW | HomeStation</title></head>
 <body> <h2>HomeStation</h2>
-<p>{sensorDat}</p>
+<p id="sensors">NA</p>
 {script}
 </body>
 </html>
 """
 
 script = '''<script>
-
+    
 setInterval(function() {
-  getData(); <!-- call a function with set ms updates -->
+  getSensors(); <!-- call a function with set ms updates -->
 }, 2000);
 
-function getData() {
+function getSensors() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
-      document.getElementById("ADCValue").innerHTML =
-      this.responseText;
+      document.getElementById("sensors").innerHTML = this.responseText;
     }
   };
-  xhttp.open("GET", "readADC", true);
+  xhttp.open("GET", "sensors", true);
   xhttp.send();
 }
+</script>
 '''
+
+def requestBreakdown(request):
+    return request.split()
 
 
 def blink_led(frequency = 0.5, num_blinks = 3):
@@ -122,15 +126,44 @@ async def serve_client(reader, writer):
     # We are not interested in HTTP request headers, skip them
     while await reader.readline() != b"\r\n":
         pass
-    
     request = str(request_line)
     
     
+    cmd_rq = requestBreakdown(request)
+    
+    print(cmd_rq[1])
     stateis = htmlifyLstStr(lstStrSensors(atmo,lght))
     
-    response = html.format(SensorDat=stateis)
-    writer.write('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
-    writer.write(response)
+    
+    
+    
+    if cmd_rq[1] == '/':
+        writer.write('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
+        response = html.format(script=script)
+        writer.write(response)
+        
+    elif cmd_rq[1] == '/sensors':
+        sensorUpdateStr = htmlifyLstStr(lstStrSensors(atmo,lght))
+        writer.write(sensorUpdateStr)
+    
+    
+    
+    
+#     stateis = htmlifyLstStr(lstStrSensors(atmo,lght))
+#     response = html.format(script=script)
+#     
+#     #print(response)
+#     cmd_sensorUpdate = request.find('/sensor')
+#     
+#     if cmd_sensorUpdate ==8:
+#         print('rquest up')
+#         writer.write(response)
+#     
+#     #sensorUpdateStr = htmlifyLstStr(lstStrSensors(atmo,lght))
+#     
+#     
+#     writer.write('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
+#     writer.write(response)
 
     await writer.drain()
     await writer.wait_closed()
