@@ -14,7 +14,9 @@ https://core-electronics.com.au/projects/wifi-garage-door-controller-with-raspbe
 import network
 import uasyncio as asyncio
 from machine import Pin
-import time
+
+
+from homestation import *
 
 from PiicoDev_Unified import sleep_ms
 
@@ -33,7 +35,7 @@ try:
 except:
     print('OLED not plugged in')
 
-led = Pin("LED", Pin.OUT, value=1)
+
 
 
 
@@ -53,7 +55,11 @@ check_interval_sec = 0.25
 
 wlan = network.WLAN(network.STA_IF) ## Pass in wlan?
 
+wlan_param = [wlan,ssid,password]
 
+def lstStrSensors(atmo,lght):
+    tempC, preshPa, humRH, lux = getSensors(atmo,lght)
+    return ["Temp: {:.1f} &#8451;".format(tempC),"Press: {:.0f}hPa".format(preshPa),"RH: {:.1f}%".format(humRH),"Lux: {:.1f}".format(lux)]
 
 # Get converted Atmo Data
 def getAtmo(atmo):
@@ -63,6 +69,20 @@ def getAtmo(atmo):
 # Get Lux data
 def getLight(lght):
     return lght.read() # Lux
+
+def atmoSplit():
+    tempC, presPa, humRH = atmo.values()
+    return tempC, presPa/100, humRH #[degC,hPa,RH]
+
+
+# sensorData = {
+#     ".Atmo": atmoSplit,
+#     "Temperature :": ['Atmo',0],
+#     "Pressure": ['Atmo',1],
+#     "Humidity": ['Atmo',2],
+#     "Light": lght.read,
+# }
+
 
 #Push the RBG Value to the RGB module and show it
 def pushLight(leds,colLst):
@@ -79,14 +99,14 @@ def getSensors(atmo,lght): # CHANGE THIS TO A DICT, key is the text and value is
     tempC, preshPa, humRH = getAtmo(atmo)
     return [tempC, preshPa, humRH, getLight(lght)]
 
-
+sensorData = 'Update plox'
 
 async def main():
     print('Connecting to WiFi...')
-    asyncio.create_task(connect_to_wifi())
+    asyncio.create_task(connect_to_wifi(wlan_param))
 
     print('Setting up webserver...')
-    asyncio.create_task(asyncio.start_server(serve_client, "0.0.0.0", 80))
+    asyncio.create_task(asyncio.start_server(lambda r,w: serve_client(r,w,sensors=sensorData), "0.0.0.0", 80))
 
     while True:
         await asyncio.sleep(check_interval_sec)
